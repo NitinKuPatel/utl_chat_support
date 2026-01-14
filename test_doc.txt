@@ -1,0 +1,22 @@
+
+# Solar Inverter Product Manual (Mock)
+
+## Model: UTL-Solar-X1
+
+### Safety Instructions
+Always disconnect the battery before maintenance.
+Do not cover the cooling vents.
+
+### Troubleshooting
+**Error 01**: Low Battery Voltage. Recharge battery or check connections.
+**Error 02**: Overload. Disconnect non-essential loads.
+**Error 03**: Grid Freq High. Check grid settings.
+
+### User Policy (Customer)
+Warranty is valid for 2 years.
+Returns accepted within 30 days.
+
+### Internal Technical Note (Employee)
+To reset the factory settings, hold the UP and DOWN buttons for 10 seconds.
+This action is not visible to customers.
+The debug pin is 1234.
