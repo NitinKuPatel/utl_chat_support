@@ -12,6 +12,7 @@ from app.users.services import bootstrap_super_admin
 from app.agent import router as agent_router
 from app.knowledge_base import routes as knowledge_routes
 from app.tickets import routes as tickets_routes
+from app.dashboard import routes as dashboard_routes
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -27,6 +28,8 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
+
+
 
 # Startup Events
 @app.on_event("startup")
@@ -47,6 +50,7 @@ app.include_router(user_routes.router, prefix="/users", tags=["Users"])
 app.include_router(agent_router.router)
 app.include_router(knowledge_routes.router, prefix="/knowledge", tags=["Knowledge Base"])
 app.include_router(tickets_routes.router)
+app.include_router(dashboard_routes.router, prefix="/dashboard", tags=["Dashboard"])
 
 @app.get("/")
 async def root():

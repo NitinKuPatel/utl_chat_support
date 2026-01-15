@@ -31,5 +31,6 @@ def decode_token(token: str):
     try:
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[ALGORITHM])
         return payload
-    except JWTError:
-        return None
+    except JWTError as e:
+        # Re-raise to let caller handle detailed error message
+        raise e

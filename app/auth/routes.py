@@ -15,19 +15,38 @@ async def login(login_data: LoginRequest):
             detail="Incorrect email or password",
         )
     
-    if not verify_password(login_data.password, user.password):
+    # In a real DB, you'd fetch the user object directly. 
+    # Since find_user_by_email returns a UserInDB object (from services.py), we don't need to wrap it again.
+    # But wait, we imported UserInDB from models.
+    # The user variable is ALREADY an instance of UserInDB.
+    user_in_db = user
+
+    if not verify_password(login_data.password, user_in_db.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     
-    access_token = create_access_token(data={"sub": user.email, "role": user.role})
-    refresh_token = create_refresh_token(data={"sub": user.email})
+    # Update last_login
+    # In a real DB, you would do: user_service.update_last_login(user_in_db.user_id)
+    # For now, we'll assume we can update it in the DB or Mock
+    # Update last_login
+    # Using local import to avoid potential circular dependency issues
+    from app.users.services import update_user
+    from datetime import datetime, timezone
+    try:
+        await update_user(user_in_db.user_id, {"last_login": datetime.now(timezone.utc)})
+    except Exception as e:
+        print(f"Failed to update last_login: {e}")
+
+    access_token = create_access_token(data={"sub": user_in_db.email, "role": user_in_db.role})
+    refresh_token = create_refresh_token(data={"sub": user_in_db.email})
     
     # Store refresh token in DB
     db = get_database()
     await db.users.update_one(
-        {"email": user.email},
+        {"email": user_in_db.email},
         {"$set": {"refresh_token": refresh_token}}
     )
     

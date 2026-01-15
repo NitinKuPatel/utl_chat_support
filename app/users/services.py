@@ -4,8 +4,8 @@ from app.core.config import settings
 from app.auth.utils import verify_password
 import pymongo
 from fastapi import HTTPException
-from typing import List, Optional
-from datetime import datetime
+from typing import List, Optional, Union
+from datetime import datetime, timezone
 import re
 
 async def get_user_by_email(email: str):
@@ -52,7 +52,7 @@ async def create_user(user: UserCreate, created_by_role: str = "super_admin"):
         user_id=user_id,
         type="employee",
         status="active",
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
     
     await db.users.insert_one(user_in_db.dict())
@@ -80,25 +80,42 @@ async def bootstrap_super_admin():
             "department": settings.DEFAULT_SUPERADMIN_DEPARTMENT,
             "type": "employee",
             "status": "active",
-            "created_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc)
         }
         await create_user_direct(user_data)
         print("Super admin created successfully")
 
-async def update_user(user_id: str, user_update: UserUpdate):
+async def update_user(user_id: str, user_update: Union[UserUpdate, dict]):
     db = get_database()
     curr_user = await db.users.find_one({"user_id": user_id})
     if not curr_user:
         raise HTTPException(status_code=404, detail="User not found")
         
-    update_data = user_update.dict(exclude_unset=True)
+    if isinstance(user_update, dict):
+        update_data = user_update
+    else:
+        update_data = user_update.dict(exclude_unset=True)
+        
     if not update_data:
         return UserInDB(**curr_user)
         
     if "email" in update_data:
-        del update_data["email"] # Email usually not changeable or needs check? PRD says 'Update allowed fields: name, mobile, role, department, status'. Email NOT in allowed list. Good.
+        # Prevent email updates via this method unless explicitly allowed logic is added
+        # For now, keeping it safe as per original logic for UserUpdate
+        # But if internal dict has email? Maybe allow? 
+        # Safer to just remove it if it matches original restrictiveness, 
+        # BUT internal updates might need it. 
+        # For now, let's respect the original constraint ONLY if it came from UserUpdate? 
+        # actually, the original code removed it unconditionally.
+        # Let's keep removing it to match previous behavior unless we are sure.
+        # But wait, if I want to update email internally I can't?
+        # The prompt is about last_login. Let's focus on that.
+        if "email" in update_data and update_data["email"] == curr_user["email"]:
+             pass # same email is fine
+        elif "email" in update_data:
+             del update_data["email"] 
         
-    update_data["updated_at"] = datetime.utcnow()
+    update_data["updated_at"] = datetime.now(timezone.utc)
     
     await db.users.update_one({"user_id": user_id}, {"$set": update_data})
     

@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, validator
 from typing import Optional
-from datetime import datetime
 import re
+from datetime import datetime, timezone
 
 class Token(BaseModel):
     access_token: str
@@ -40,8 +40,9 @@ class UserInDB(UserBase):
     user_id: str
     type: str = "employee"
     status: str = "active"
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
+    last_login: Optional[datetime] = None
     
     # Internal fields not always exposed
     password: Optional[str] = None 
@@ -53,9 +54,16 @@ class UserResponse(UserBase):
     status: str
     created_at: datetime
     updated_at: Optional[datetime] = None
+    last_login: Optional[datetime] = None
 
     class Config:
         from_attributes = True # updated for V2 warning
+
+    @validator("created_at", "updated_at", "last_login", pre=True)
+    def ensure_utc(cls, v):
+        if isinstance(v, datetime) and v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v
 
 class LoginRequest(BaseModel):
     email: str

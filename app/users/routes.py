@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import List, Optional
 from app.users.models import UserCreate, UserResponse, UserUpdate, UserInDB
 from app.users import services
-from app.auth.dependencies import get_current_super_admin
+from app.auth.dependencies import get_current_super_admin, get_current_user
 
 router = APIRouter()
 
@@ -49,7 +49,7 @@ async def list_users(
     department: Optional[str] = None,
     sort_by: str = "created_at",
     sort_order: str = "desc",
-    admin: UserInDB = Depends(get_current_super_admin)
+    current_user: UserInDB = Depends(get_current_user) # Changed to allow all auth users to view
 ):
     return await services.list_users(
         skip=skip, 
