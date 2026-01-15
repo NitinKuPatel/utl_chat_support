@@ -17,8 +17,12 @@ async def chat_endpoint(request: ChatRequest):
     """
     try:
         # Pass to agent service
-        result = await agent_service.process_message(request.session_id, request.message)
-        
+        result = await agent_service.process_message(
+            session_id=request.session_id, 
+            message=request.message,
+            domain=request.domain,
+            model_number=request.model_number
+        )        
         return ChatResponse(
             success=True,
             agent_mode="customer", # Static for now as per requirements

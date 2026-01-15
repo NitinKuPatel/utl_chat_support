@@ -3,7 +3,7 @@ from langchain_core.tools import tool
 from app.knowledge_base.retrieval import retrieval_service
 
 @tool
-def domain_aware_rag(query: str, domain: str = "customer", sku_id: Optional[str] = None, top_k: int = 3) -> Dict:
+def domain_aware_rag(query: str, domain: str = "customer", model_number: Optional[str] = None, top_k: int = 3) -> Dict:
     """
     Retrieve domain-specific information from the knowledge base.
     Use this tool to answer user questions based on stored documents.
@@ -11,13 +11,13 @@ def domain_aware_rag(query: str, domain: str = "customer", sku_id: Optional[str]
     Args:
         query: The search query.
         domain: The user's domain ("customer" or "employee").
-        sku_id: Optional product SKU or model number to filter by.
+        model_number: Optional product SKU or model number to filter by.
         top_k: Number of results to return (default 3).
         
     Returns:
         Structured dictionary containing answer context, confidence, and sources.
     """
-    results = retrieval_service.search(query, domain, top_k, sku_id)
+    results = retrieval_service.search(query, domain, top_k, model_number)
     
     if not results:
         return {
@@ -44,7 +44,7 @@ def domain_aware_rag(query: str, domain: str = "customer", sku_id: Optional[str]
         sources_out.append({
             "file_name": meta.get("file_name"),
             "page_number": meta.get("page_number"),
-            "sku_id": meta.get("sku_id"),
+            "model_number": meta.get("model_number"),
             "doc_type": meta.get("doc_type"),
             "snippet": res["content"][:200] + "..."
         })
@@ -71,5 +71,56 @@ def domain_aware_rag(query: str, domain: str = "customer", sku_id: Optional[str]
         "sources": sources_out
     }
 
+from datetime import datetime
+import uuid
+from app.db.mongodb import db as app_db
+
+@tool
+async def create_ticket_tool(model_name: str, customer_name: str, description: str, model_no: Optional[str] = None, mobile_no: Optional[str] = None) -> Dict:
+    """
+    Create a new support ticket in the system.
+    Use this tool when a user wants to raise a ticket or report an issue.
+    
+    Args:
+        model_name: Name of the product model (Required).
+        customer_name: Name of the customer (Required).
+        description: Detailed description of the issue (Required).
+        model_no: Model number/SKU (Optional).
+        mobile_no: Customer's mobile number (Optional).
+        
+    Returns:
+        Dictionary with ticket_id and status.
+    """
+    if app_db.db is None:
+        # Fallback if DB not connected (e.g. testing)
+        return {"error": "Database not connected"}
+
+    try:
+        ticket_id = str(uuid.uuid4())
+        ticket_data = {
+            "ticket_id": ticket_id,
+            "model_name": model_name,
+            "model_no": model_no,
+            "mobile_no": mobile_no,
+            "customer_name": customer_name,
+            "description": description,
+            "status": "open",
+            "created_at": datetime.utcnow()
+        }
+        
+        await app_db.db["customer_ticket"].insert_one(ticket_data)
+        
+        return {
+            "ticket_id": ticket_id,
+            "status": "created",
+            "message": f"Ticket created successfully for {customer_name}. Ticket ID: {ticket_id}"
+        }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "status": "failed",
+            "message": "Failed to create ticket due to an internal error."
+        }
+
 # Tool Registry
-registry = [domain_aware_rag]
+registry = [domain_aware_rag, create_ticket_tool]

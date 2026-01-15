@@ -4,6 +4,8 @@ from typing import List, Optional
 class ChatRequest(BaseModel):
     session_id: str
     message: str
+    domain: str = "customer"
+    model_number: Optional[str] = None
 
 class ChatResponse(BaseModel):
     success: bool

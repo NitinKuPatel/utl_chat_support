@@ -45,7 +45,7 @@ class RetrievalService:
                  
         return self._indexes[domain]
 
-    def search(self, query: str, domain: str, top_k: int = 3, sku_id: str = None) -> List[Dict[str, Any]]:
+    def search(self, query: str, domain: str, top_k: int = 3, model_number: str = None) -> List[Dict[str, Any]]:
         """
         Perform retrieval.
         Note: This method is synchronous because LangChain tools are often sync. 
@@ -65,8 +65,8 @@ class RetrievalService:
             
             # Filter kwargs
             filter_dict = {}
-            if sku_id:
-                filter_dict["sku_id"] = sku_id
+            if model_number:
+                filter_dict["model_number"] = model_number
                 
             try:
                 docs_with_score = vector_store.similarity_search_with_score(

@@ -10,7 +10,8 @@ import re
 
 async def get_user_by_email(email: str):
     db = get_database()
-    user = await db.users.find_one({"email": email})
+    # Case-insensitive search using regex
+    user = await db.users.find_one({"email": {"$regex": f"^{re.escape(email)}$", "$options": "i"}})
     if user:
         return UserInDB(**user)
     return None
