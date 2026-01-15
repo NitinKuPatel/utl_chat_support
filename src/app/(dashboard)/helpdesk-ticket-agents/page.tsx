@@ -18,13 +18,23 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
+} from "@/components/ui/sheet"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "../../../components/ui/avatar"
+import { ScrollArea } from "@/components/ui/scroll-area"
+
 
 // Detailed agent mock data
-const agentTickets = [
+/* const agentTickets = [
     {
         id: "TCK-2023-884",
         subject: "Inverter Grid Sync Failure",
@@ -33,39 +43,8 @@ const agentTickets = [
         priority: "High",
         lastUpdate: "10 mins ago",
     },
-    {
-        id: "TCK-2023-879",
-        subject: "Battery Bank Voltage Drop",
-        agent: { name: "Priya Singh", role: "Senior Tech", status: "busy", email: "priya@fujiyama.com", rating: 4.9 },
-        status: "In Progress",
-        priority: "Critical",
-        lastUpdate: "45 mins ago",
-    },
-    {
-        id: "TCK-2023-883",
-        subject: "Monthly Generation Report Error",
-        agent: { name: "Amit Sharma", role: "Billing Specialist", status: "online", email: "amit@fujiyama.com", rating: 4.5 },
-        status: "Pending",
-        priority: "Medium",
-        lastUpdate: "3 hours ago",
-    },
-    {
-        id: "TCK-2023-875",
-        subject: "New Connection Enquiry",
-        agent: { name: "Vikram Malhotra", role: "Sales Lead", status: "offline", email: "vikram@fujiyama.com", rating: 4.2 },
-        status: "Open",
-        priority: "Low",
-        lastUpdate: "2 days ago",
-    },
-    {
-        id: "TCK-2023-870",
-        subject: "Mobile App Login Issue",
-        agent: { name: "Rajesh Kumar", role: "L1 Support", status: "online", email: "rajesh@fujiyama.com", rating: 4.8 },
-        status: "Resolved",
-        priority: "Medium",
-        lastUpdate: "1 week ago",
-    },
-]
+    ...
+] */
 
 const statsData = [
     { label: "Active Agents", value: "12", icon: Users, gradient: "from-blue-500 to-cyan-500", shadow: "blue", trend: "+2" },
@@ -74,30 +53,78 @@ const statsData = [
     { label: "Overloaded", value: "2", icon: Gauge, gradient: "from-red-500 to-rose-600", shadow: "rose", trend: "+1" },
 ]
 
+import { dashboardService, DashboardAgent } from "@/services/dashboardService"
+import { useEffect } from "react"
+
 export default function TicketAgentsPage() {
     const [searchTerm, setSearchTerm] = useState("")
     const [activeTab, setActiveTab] = useState("All Agents")
     const [showFilters, setShowFilters] = useState(false)
+    const [agents, setAgents] = useState<DashboardAgent[]>([])
+    const [isLoading, setIsLoading] = useState(true)
+
+    // Agent History Drill-down State
+    const [isHistorySheetOpen, setIsHistorySheetOpen] = useState(false)
+    const [selectedAgent, setSelectedAgent] = useState<DashboardAgent | null>(null)
+    const [historyTickets, setHistoryTickets] = useState<any[]>([])
+    const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+    const [historyFilter, setHistoryFilter] = useState<'all' | 'resolved' | 'pending'>('all')
+
+    useEffect(() => {
+        fetchAgents()
+    }, [])
+
+    const fetchAgents = async () => {
+        try {
+            const data = await dashboardService.getAgents()
+            setAgents(data)
+        } catch (error) {
+            console.error("Failed to fetch agents dashboard", error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const openAgentHistory = async (agent: DashboardAgent, filter: 'all' | 'resolved' | 'pending' = 'all') => {
+        setSelectedAgent(agent)
+        setHistoryFilter(filter)
+        setIsHistorySheetOpen(true)
+        setIsLoadingHistory(true)
+        try {
+            const tickets = await dashboardService.getAgentTickets(agent.id)
+            setHistoryTickets(tickets)
+        } catch (error) {
+            console.error("Failed to fetch agent history", error)
+            setHistoryTickets([])
+        } finally {
+            setIsLoadingHistory(false)
+        }
+    }
+
+    const filteredHistoryTickets = historyTickets.filter(t => {
+        if (historyFilter === 'resolved') return t.status.toLowerCase() === 'resolved' || t.status.toLowerCase() === 'closed';
+        if (historyFilter === 'pending') return ['open', 'pending', 'in_progress', 'in progress'].includes(t.status.toLowerCase());
+        return true;
+    });
 
     // Filtering Logic
-    const filteredAgents = agentTickets.filter(ticket => {
-        // Search Filter (Search by Agent, Role, or Ticket ID/Subject)
+    const filteredAgents = agents.filter(agent => {
+        // Search Filter
         const matchesSearch =
-            ticket.agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            ticket.agent.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            ticket.subject.toLowerCase().includes(searchTerm.toLowerCase());
+            agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            agent.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (agent.active_ticket?.subject.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
 
         // Tab Filter
         let matchesTab = true;
         if (activeTab === 'Online') {
-            matchesTab = ticket.agent.status === 'online';
+            matchesTab = agent.status === 'online';
         } else if (activeTab === 'Available') {
-            // Considering 'online' as available for simplification
-            matchesTab = ticket.agent.status === 'online';
+            matchesTab = agent.status === 'online';
         } else if (activeTab === 'L1 Support') {
-            matchesTab = ticket.agent.role.includes('L1');
+            matchesTab = agent.role.includes('L1');
         } else if (activeTab === 'Top Rated') {
-            matchesTab = ticket.agent.rating >= 4.8;
+            matchesTab = agent.rating >= 4.8;
         }
 
         return matchesSearch && matchesTab;
@@ -190,7 +217,7 @@ export default function TicketAgentsPage() {
                             <Search className="h-5 w-5 text-gray-400" />
                         </div>
                         <Input
-                            placeholder="Search agent, role, or active ticket..."
+                            placeholder="Search agent, role, or active complaint..."
                             className="pl-12 py-6 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-base"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -243,73 +270,111 @@ export default function TicketAgentsPage() {
                         <TableHeader className="bg-gray-50/80 dark:bg-gray-900/50 backdrop-blur-sm">
                             <TableRow>
                                 <TableHead className="py-5 pl-6 font-semibold text-gray-900 dark:text-white">Agent Profile</TableHead>
-                                <TableHead className="font-semibold text-gray-900 dark:text-white">Current Ticket</TableHead>
+                                <TableHead className="font-semibold text-gray-900 dark:text-white">Current Complaint</TableHead>
                                 <TableHead className="font-semibold text-gray-900 dark:text-white">Status</TableHead>
-                                <TableHead className="font-semibold text-gray-900 dark:text-white">Priority</TableHead>
+                                <TableHead className="font-semibold text-gray-900 dark:text-white text-center">Total</TableHead>
+                                <TableHead className="font-semibold text-gray-900 dark:text-white text-center">Resolved</TableHead>
+                                <TableHead className="font-semibold text-gray-900 dark:text-white text-center">Pending</TableHead>
                                 <TableHead className="font-semibold text-gray-900 dark:text-white">Last Activity</TableHead>
                                 <TableHead className="text-right pr-6 font-semibold text-gray-900 dark:text-white">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {filteredAgents.length > 0 ? (
-                                filteredAgents.map((ticket) => (
-                                    <TableRow key={ticket.id} className="group hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 transition-colors cursor-pointer border-b border-gray-100 dark:border-gray-700/50">
+                                filteredAgents.map((agent) => (
+                                    <TableRow key={agent.id} className="group hover:bg-emerald-50/50 dark:hover:bg-emerald-900/10 transition-colors cursor-pointer border-b border-gray-100 dark:border-gray-700/50">
                                         <TableCell className="pl-6">
                                             <div className="flex items-center gap-4">
                                                 <div className="relative">
                                                     <Avatar className="h-10 w-10 border-2 border-white dark:border-gray-800 shadow-md">
-                                                        <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${ticket.agent.name}`} />
-                                                        <AvatarFallback>{ticket.agent.name.substring(0, 2)}</AvatarFallback>
+                                                        <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${agent.avatar_seed}`} />
+                                                        <AvatarFallback>{agent.name.substring(0, 2)}</AvatarFallback>
                                                     </Avatar>
-                                                    <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800 ${ticket.agent.status === 'online' ? 'bg-emerald-500' :
-                                                        ticket.agent.status === 'busy' ? 'bg-amber-500' : 'bg-gray-400'
+                                                    <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800 ${agent.status === 'online' ? 'bg-emerald-500' :
+                                                        agent.status === 'busy' ? 'bg-amber-500' : 'bg-gray-400'
                                                         }`}></span>
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-gray-900 dark:text-white group-hover:text-emerald-600 transition-colors">{ticket.agent.name}</span>
+                                                        <span className="font-bold text-gray-900 dark:text-white group-hover:text-emerald-600 transition-colors">{agent.name}</span>
                                                         <div className="flex items-center text-xs text-amber-500 bg-amber-50 px-1.5 rounded-md">
                                                             <Star className="w-3 h-3 fill-current mr-0.5" />
-                                                            {ticket.agent.rating}
+                                                            {agent.rating}
                                                         </div>
                                                     </div>
-                                                    <span className="text-xs text-gray-500">{ticket.agent.role}</span>
+                                                    <span className="text-xs text-gray-500">{agent.role}</span>
                                                 </div>
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex flex-col gap-1">
-                                                <span className="text-xs font-mono text-gray-400">{ticket.id}</span>
-                                                <span className="text-sm font-medium text-gray-800 dark:text-gray-200 max-w-[200px] truncate">{ticket.subject}</span>
+                                            {agent.active_ticket ? (
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                                        {agent.active_ticket.id.startsWith('COMP-') ? agent.active_ticket.id : `COMP-${agent.active_ticket.id.slice(-4).toUpperCase()}`}
+                                                    </span>
+                                                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 max-w-[200px] truncate">{agent.active_ticket.subject}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-sm text-gray-400 italic">No active complaint</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            {agent.active_ticket ? (
+                                                <Badge
+                                                    variant={
+                                                        agent.active_ticket.status === "Open" ? "default" :
+                                                            agent.active_ticket.status === "Resolved" ? "secondary" : "outline"
+                                                    }
+                                                    className={`
+                                                    ${agent.active_ticket.status === "Open" ? "bg-blue-100 text-blue-700 border-none" : ""}
+                                                    ${agent.active_ticket.status === "Resolved" ? "bg-emerald-100 text-emerald-700 border-none" : ""}
+                                                    ${agent.active_ticket.status === "Pending" ? "bg-amber-100 text-amber-700 border-none" : ""}
+                                                    ${agent.active_ticket.status === "In Progress" ? "bg-purple-100 text-purple-700 border-none" : ""}
+                                                    capitalize
+                                                    `}
+                                                >
+                                                    {agent.active_ticket.status}
+                                                </Badge>
+                                            ) : (
+                                                <span className="text-gray-400">-</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-center font-semibold text-gray-900 dark:text-white"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                openAgentHistory(agent, 'all');
+                                            }}
+                                        >
+                                            <div className="hover:scale-110 transition-transform cursor-pointer inline-block px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
+                                                {agent.stats?.total || 0}
                                             </div>
                                         </TableCell>
-                                        <TableCell>
-                                            <Badge
-                                                variant={
-                                                    ticket.status === "Open" ? "default" :
-                                                        ticket.status === "Resolved" ? "secondary" : "outline"
-                                                }
-                                                className={`
-                                                    ${ticket.status === "Open" ? "bg-blue-100 text-blue-700 border-none" : ""}
-                                                    ${ticket.status === "Resolved" ? "bg-emerald-100 text-emerald-700 border-none" : ""}
-                                                    ${ticket.status === "Pending" ? "bg-amber-100 text-amber-700 border-none" : ""}
-                                                    ${ticket.status === "In Progress" ? "bg-purple-100 text-purple-700 border-none" : ""}
-                                                `}
+                                        <TableCell className="text-center">
+                                            <div
+                                                className="flex items-center justify-center gap-1 text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-full text-xs font-semibold cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openAgentHistory(agent, 'resolved');
+                                                }}
                                             >
-                                                {ticket.status}
-                                            </Badge>
+                                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                                {agent.stats?.resolved || 0}
+                                            </div>
                                         </TableCell>
-                                        <TableCell>
-                                            <div className={`flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider
-                                                ${ticket.priority === "Critical" ? "text-red-600" :
-                                                    ticket.priority === "High" ? "text-orange-600" : "text-gray-500"
-                                                }`}>
-                                                {ticket.priority === "Critical" && <AlertCircle className="w-4 h-4" />}
-                                                {ticket.priority}
+                                        <TableCell className="text-center">
+                                            <div
+                                                className="flex items-center justify-center gap-1 text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-full text-xs font-semibold cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    openAgentHistory(agent, 'pending');
+                                                }}
+                                            >
+                                                <Clock className="w-3.5 h-3.5" />
+                                                {agent.stats?.pending || 0}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-sm text-gray-500">
-                                            {ticket.lastUpdate}
+                                            {agent.active_ticket ? agent.active_ticket.lastUpdate : "Online now"}
                                         </TableCell>
                                         <TableCell className="text-right pr-6">
                                             <div className="flex justify-end items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -334,6 +399,81 @@ export default function TicketAgentsPage() {
                     </Table>
                 </CardContent>
             </Card>
+            <Sheet open={isHistorySheetOpen} onOpenChange={setIsHistorySheetOpen}>
+                <SheetContent className="w-[400px] sm:w-[540px] p-0 border-l border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 [&>button]:text-white [&>button]:top-6 [&>button]:right-6 [&>button]:bg-white/10 [&>button]:hover:bg-white/20 [&>button]:z-50 cursor-pointer">
+                    <div className="relative bg-gradient-to-br from-gray-900 to-gray-800 p-6 text-white overflow-hidden">
+                        <SheetHeader className="relative z-10">
+                            <SheetTitle className="text-xl font-bold text-white flex items-center gap-2">
+                                <Avatar className="h-8 w-8 border-2 border-white/20">
+                                    <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedAgent?.avatar_seed}`} />
+                                    <AvatarFallback>{selectedAgent?.name.substring(0, 2)}</AvatarFallback>
+                                </Avatar>
+                                {selectedAgent?.name}'s Tasks
+                            </SheetTitle>
+                            <SheetDescription className="text-gray-400">
+                                {historyFilter === 'all' ? `Managing ${selectedAgent?.stats?.total || 0} assigned complaints` :
+                                    historyFilter === 'resolved' ? `Showing ${selectedAgent?.stats?.resolved || 0} resolved complaints` :
+                                        `Showing ${selectedAgent?.stats?.pending || 0} pending complaints`}
+                            </SheetDescription>
+                        </SheetHeader>
+                        {/* Decorative background elements */}
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
+                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl -ml-16 -mb-16 pointer-events-none"></div>
+                    </div>
+
+                    <ScrollArea className="h-[calc(100vh-120px)] p-6">
+                        {isLoadingHistory ? (
+                            <div className="space-y-4">
+                                {[1, 2, 3].map((i) => (
+                                    <div key={i} className="h-24 bg-gray-200 dark:bg-gray-800 rounded-xl animate-pulse" />
+                                ))}
+                            </div>
+                        ) : filteredHistoryTickets.length > 0 ? (
+                            <div className="space-y-4 pb-10">
+                                {filteredHistoryTickets.map((ticket) => (
+                                    <div key={ticket.ticket_id} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <h4 className="font-bold text-gray-900 dark:text-gray-100 text-sm">{ticket.customer_name}</h4>
+                                                <p className="text-xs text-emerald-600 font-medium">{ticket.mobile_no || "No Mobile"}</p>
+                                            </div>
+                                            <Badge variant={['resolved', 'closed'].includes(ticket.status.toLowerCase()) ? 'default' : 'secondary'}
+                                                className={['resolved', 'closed'].includes(ticket.status.toLowerCase()) ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}>
+                                                {ticket.status}
+                                            </Badge>
+                                        </div>
+                                        <div className="mb-3">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">
+                                                {ticket.ticket_id.startsWith('COMP-') ? ticket.ticket_id : `COMP-${ticket.ticket_id.slice(-4).toUpperCase()}`}
+                                            </span>
+                                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                {ticket.model_name} <span className="text-gray-400 font-normal">- {ticket.issue_type || "Issue"}</span>
+                                            </p>
+                                        </div>
+                                        <div className="p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg text-xs text-gray-600 dark:text-gray-400 italic mb-3 border border-gray-100 dark:border-gray-700">
+                                            "{ticket.description}"
+                                        </div>
+                                        <div className="flex items-center justify-between pt-2 border-t border-gray-50 dark:border-gray-800">
+                                            <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                                                <Clock className="w-3 h-3" />
+                                                <span>{new Date(ticket.created_at).toLocaleDateString()} {new Date(ticket.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-12">
+                                <div className="bg-gray-100 dark:bg-gray-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <MessageSquare className="w-8 h-8 text-gray-400" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">No tickets found</h3>
+                                <p className="text-gray-500 text-sm mt-1">There are no {historyFilter !== 'all' ? historyFilter : ''} tickets assigned to this agent.</p>
+                            </div>
+                        )}
+                    </ScrollArea>
+                </SheetContent>
+            </Sheet>
         </div>
     )
 }

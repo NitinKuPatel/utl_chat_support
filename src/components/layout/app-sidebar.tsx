@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/context/SidebarContext";
+import { LogOut } from "lucide-react";
+import { authService } from "@/services/authService";
 import {
     BoxCubeIcon,
     ChevronDownIcon,
@@ -64,8 +66,8 @@ const staticNavItems: NavItem[] = [
         path: '#',
         subItems: [
             { name: 'Settings', path: '/helpdesk-settings' },
-            { name: 'Customer Ticket', path: '/helpdesk-customer-ticket' },
-            { name: 'Ticket Agents', path: '/helpdesk-ticket-agents' },
+            { name: 'Customer Complaint', path: '/helpdesk-customer-ticket' },
+            { name: 'Complaint Agents', path: '/helpdesk-ticket-agents' },
         ],
     },
     {
@@ -110,10 +112,17 @@ const AppSidebar: React.FC = () => {
     // Track open state of submenus
     const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
 
-    // Track hydration state
+    // Track hydration state and filter nav items based on role
     useEffect(() => {
         setIsHydrated(true);
-    }, []);
+        const role = authService.getUserRole();
+        if (role !== 'super_admin') {
+            const filteredItems = staticNavItems.filter(item => item.name !== 'Users');
+            setNavItems(filteredItems);
+        } else {
+            setNavItems(staticNavItems);
+        }
+    }, [pathname]); // Re-run if pathname changes (login/logout might trigger full reload but good to keep dependencies)
 
     // Handle submenu toggle
     const handleSubmenuToggle = (name: string) => {
@@ -246,7 +255,7 @@ const AppSidebar: React.FC = () => {
             </div>
             {/* SIDEBAR HEADER */}
 
-            <div className="no-scrollbar flex flex-col overflow-y-auto duration-300 ease-linear">
+            <div className="no-scrollbar flex flex-col overflow-y-auto duration-300 ease-linear flex-1">
                 <nav className="mt-5 py-4 px-4 lg:mt-9 lg:px-6">
                     <div>
                         <ul className="mb-6 flex flex-col gap-1.5">

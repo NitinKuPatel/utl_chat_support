@@ -14,7 +14,7 @@ const ticketHighlights = [
 ]
 
 const cardData = [
-    { label: "Total Tickets", value: 124, trend: "+12%", color: "blue" },
+    { label: "Total Complaints", value: 124, trend: "+12%", color: "blue" },
     { label: "Critical Alerts", value: 8, trend: "-2%", color: "rose" },
     { label: "Pending Visits", value: 15, trend: "+5%", color: "amber" },
     { label: "Resolved", value: 42, trend: "+18%", color: "emerald" },
@@ -43,7 +43,7 @@ export default function HelpdeskDashboardPage() {
                                 Helpdesk <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-yellow-300">Command Center</span>
                             </h1>
                             <p className="text-gray-300 mt-2 text-sm md:text-base font-medium max-w-lg">
-                                Real-time monitoring of solar assets, customer tickets, and field agent performance.
+                                Real-time monitoring of solar assets, customer complaints, and field agent performance.
                             </p>
                         </div>
 
@@ -122,7 +122,7 @@ export default function HelpdeskDashboardPage() {
                             <div key={i} className="group">
                                 <div className="flex justify-between text-sm font-medium mb-2">
                                     <span className="text-gray-700 dark:text-gray-200 group-hover:text-orange-600 transition-colors">{item.label}</span>
-                                    <span className="text-gray-900 dark:text-white font-bold">{item.count} <span className="text-gray-400 font-normal">tickets</span></span>
+                                    <span className="text-gray-900 dark:text-white font-bold">{item.count} <span className="text-gray-400 font-normal">complaints</span></span>
                                 </div>
                                 <div className="h-3 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                                     <div

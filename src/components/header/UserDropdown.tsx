@@ -3,9 +3,13 @@ import Image from "next/image";
 import Link from "next/link";
 import React, { useState } from "react";
 
+import { useRouter } from "next/navigation";
+import { authService } from "@/services/authService";
+
 const COW_DAIRY_LOGO = "/utl-logo.png"; // Changed to UTL logo
 
 export default function UserDropdown() {
+    const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
     const [userName, setUserName] = useState("User");
     const [userEmail, setUserEmail] = useState("user@example.com");
@@ -39,9 +43,12 @@ export default function UserDropdown() {
     }
 
     const handleSignOut = async () => {
-        // Create simple logout logic for now
-        console.log("Logging out...");
-        // window.location.href = '/signin';
+        try {
+            await authService.logout();
+            router.push('/login');
+        } catch (error) {
+            console.error("Logout failed", error);
+        }
     };
 
     return (
