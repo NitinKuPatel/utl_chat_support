@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+langchain
+langchain-openai
+langchain-core
+langchain-community
+python-dotenv
+motor
+pydantic
+python-multipart
+python-jose[cryptography]
+faiss-cpu
+pypdf
+python-docx
+tiktoken
+docx2txt
